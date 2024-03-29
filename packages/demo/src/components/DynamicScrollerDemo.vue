@@ -1,38 +1,34 @@
 <template>
   <div class="dynamic-scroller-demo">
     <div class="toolbar">
-      <input
-        v-model="search"
-        placeholder="Filter..."
+      <input v-model="search" placeholder="Filter..." />
+      <span
+        >({{ updateParts.viewStartIdx }} - [{{ updateParts.visibleStartIdx }} -
+        {{ updateParts.visibleEndIdx }}] - {{ updateParts.viewEndIdx }})</span
       >
-      <span>({{ updateParts.viewStartIdx }} - [{{ updateParts.visibleStartIdx }} - {{ updateParts.visibleEndIdx }}] - {{ updateParts.viewEndIdx }})</span>
     </div>
 
     <DynamicScroller
+      ref="scroller"
       :items="filteredItems"
       :min-item-size="54"
       :emit-update="true"
       class="scroller"
       @resize="onResize"
       @update="onUpdate"
+      @scroll="onScroll"
     >
       <template #before>
-        <div class="notice">
-          The message heights are unknown.
-        </div>
+        <div class="notice">The message heights are unknown.</div>
       </template>
       <template #after>
-        <div class="notice">
-          You have reached the end.
-        </div>
+        <div class="notice">You have reached the end.</div>
       </template>
       <template #default="{ item, index, active }">
         <DynamicScrollerItem
           :item="item"
           :active="active"
-          :size-dependencies="[
-            item.message,
-          ]"
+          :size-dependencies="[item.message]"
           :data-index="index"
           :data-active="active"
           :title="`Click to change message ${index}`"
@@ -45,7 +41,7 @@
               :src="item.avatar"
               alt="avatar"
               class="image"
-            >
+            />
           </div>
           <div class="text">
             {{ item.message }}
@@ -61,51 +57,67 @@
 </template>
 
 <script>
-import { generateMessage } from '../data'
+import { generateMessage } from "../data";
+import DynamicScroller from "../../../vue-virtual-scroller/src/components/DynamicScroller.vue";
 
-const items = []
+const items = [];
 for (let i = 0; i < 10000; i++) {
   items.push({
     id: i,
     ...generateMessage(),
-  })
+  });
 }
 
 export default {
-  data () {
+  components: { DynamicScroller },
+  data() {
     return {
       items,
-      search: '',
-      updateParts: { viewStartIdx: 0, viewEndIdx: 0, visibleStartIdx: 0, visibleEndIdx: 0 },
-    }
+      search: "",
+      updateParts: {
+        viewStartIdx: 0,
+        viewEndIdx: 0,
+        visibleStartIdx: 0,
+        visibleEndIdx: 0,
+      },
+    };
   },
 
   computed: {
-    filteredItems () {
-      const { search, items } = this
-      if (!search) return items
-      const lowerCaseSearch = search.toLowerCase()
-      return items.filter(i => i.message.toLowerCase().includes(lowerCaseSearch))
+    filteredItems() {
+      const { search, items } = this;
+      if (!search) return items;
+      const lowerCaseSearch = search.toLowerCase();
+      return items.filter((i) =>
+        i.message.toLowerCase().includes(lowerCaseSearch)
+      );
     },
   },
 
   methods: {
-    changeMessage (message) {
-      Object.assign(message, generateMessage())
+    onScroll(e) {
+      console.log("scroll", e);
+    },
+    changeMessage(message) {
+      Object.assign(message, generateMessage());
     },
 
-    onResize () {
-      console.log('resize')
+    onResize() {
+      console.log("resize");
     },
 
-    onUpdate (viewStartIndex, viewEndIndex, visibleStartIndex, visibleEndIndex) {
-      this.updateParts.viewStartIdx = viewStartIndex
-      this.updateParts.viewEndIdx = viewEndIndex
-      this.updateParts.visibleStartIdx = visibleStartIndex
-      this.updateParts.visibleEndIdx = visibleEndIndex
+    onUpdate(viewStartIndex, viewEndIndex, visibleStartIndex, visibleEndIndex) {
+      this.updateParts.viewStartIdx = viewStartIndex;
+      this.updateParts.viewEndIdx = viewEndIndex;
+      this.updateParts.visibleStartIdx = visibleStartIndex;
+      this.updateParts.visibleEndIdx = visibleEndIndex;
     },
   },
-}
+
+  mounted() {
+    console.log(this.$refs.scroller);
+  },
+};
 </script>
 
 <style scoped>
@@ -170,7 +182,7 @@ export default {
 }
 
 .index {
-  opacity: .5;
+  opacity: 0.5;
 }
 
 .index span {

@@ -10,6 +10,7 @@
     v-bind="$attrs"
     @resize="onScrollerResize"
     @visible="onScrollerVisible"
+    @scroll="onScroll"
   >
     <template #default="{ item: itemWithSize, index, active }">
       <slot
@@ -17,7 +18,7 @@
           item: itemWithSize.item,
           index,
           active,
-          itemWithSize
+          itemWithSize,
         }"
       />
     </template>
@@ -34,48 +35,48 @@
 </template>
 
 <script>
-import mitt from 'mitt'
-import RecycleScroller from './RecycleScroller.vue'
-import { props, simpleArray } from './common'
+import mitt from "mitt";
+import RecycleScroller from "./RecycleScroller.vue";
+import { props, simpleArray } from "./common";
 
 export default {
-  name: 'DynamicScroller',
+  name: "DynamicScroller",
 
   components: {
     RecycleScroller,
   },
 
-  provide () {
-    if (typeof ResizeObserver !== 'undefined') {
-      this.$_resizeObserver = new ResizeObserver(entries => {
+  provide() {
+    if (typeof ResizeObserver !== "undefined") {
+      this.$_resizeObserver = new ResizeObserver((entries) => {
         requestAnimationFrame(() => {
           if (!Array.isArray(entries)) {
-            return
+            return;
           }
           for (const entry of entries) {
             if (entry.target && entry.target.$_vs_onResize) {
-              let width, height
+              let width, height;
               if (entry.borderBoxSize) {
-                const resizeObserverSize = entry.borderBoxSize[0]
-                width = resizeObserverSize.inlineSize
-                height = resizeObserverSize.blockSize
+                const resizeObserverSize = entry.borderBoxSize[0];
+                width = resizeObserverSize.inlineSize;
+                height = resizeObserverSize.blockSize;
               } else {
                 // @TODO remove when contentRect is deprecated
-                width = entry.contentRect.width
-                height = entry.contentRect.height
+                width = entry.contentRect.width;
+                height = entry.contentRect.height;
               }
-              entry.target.$_vs_onResize(entry.target.$_vs_id, width, height)
+              entry.target.$_vs_onResize(entry.target.$_vs_id, width, height);
             }
           }
-        })
-      })
+        });
+      });
     }
 
     return {
       vscrollData: this.vscrollData,
       vscrollParent: this,
       vscrollResizeObserver: this.$_resizeObserver,
-    }
+    };
   },
 
   inheritAttrs: false,
@@ -89,12 +90,9 @@ export default {
     },
   },
 
-  emits: [
-    'resize',
-    'visible',
-  ],
+  emits: ["resize", "visible", "scroll"],
 
-  data () {
+  data() {
     return {
       vscrollData: {
         active: true,
@@ -102,147 +100,161 @@ export default {
         keyField: this.keyField,
         simpleArray: false,
       },
-    }
+    };
   },
 
   computed: {
     simpleArray,
 
-    itemsWithSize () {
-      const result = []
-      const { items, keyField, simpleArray } = this
-      const sizes = this.vscrollData.sizes
-      const l = items.length
+    itemsWithSize() {
+      const result = [];
+      const { items, keyField, simpleArray } = this;
+      const sizes = this.vscrollData.sizes;
+      const l = items.length;
       for (let i = 0; i < l; i++) {
-        const item = items[i]
-        const id = simpleArray ? i : item[keyField]
-        let size = sizes[id]
-        if (typeof size === 'undefined' && !this.$_undefinedMap[id]) {
-          size = 0
+        const item = items[i];
+        const id = simpleArray ? i : item[keyField];
+        let size = sizes[id];
+        if (typeof size === "undefined" && !this.$_undefinedMap[id]) {
+          size = 0;
         }
         result.push({
           item,
           id,
           size,
-        })
+        });
       }
-      return result
+      return result;
+    },
+    scrollerInstance() {
+      return this.$refs.scroller;
+    },
+    scrollElement() {
+      return this.$el;
     },
   },
 
   watch: {
-    items () {
-      this.forceUpdate()
+    items() {
+      this.forceUpdate();
     },
 
     simpleArray: {
-      handler (value) {
-        this.vscrollData.simpleArray = value
+      handler(value) {
+        this.vscrollData.simpleArray = value;
       },
       immediate: true,
     },
 
-    direction (value) {
-      this.forceUpdate(true)
+    direction(value) {
+      this.forceUpdate(true);
     },
 
-    itemsWithSize (next, prev) {
-      const scrollTop = this.$el.scrollTop
+    itemsWithSize(next, prev) {
+      const scrollTop = this.$el.scrollTop;
 
       // Calculate total diff between prev and next sizes
       // over current scroll top. Then add it to scrollTop to
       // avoid jumping the contents that the user is seeing.
-      let prevActiveTop = 0; let activeTop = 0
-      const length = Math.min(next.length, prev.length)
+      let prevActiveTop = 0;
+      let activeTop = 0;
+      const length = Math.min(next.length, prev.length);
       for (let i = 0; i < length; i++) {
         if (prevActiveTop >= scrollTop) {
-          break
+          break;
         }
-        prevActiveTop += prev[i].size || this.minItemSize
-        activeTop += next[i].size || this.minItemSize
+        prevActiveTop += prev[i].size || this.minItemSize;
+        activeTop += next[i].size || this.minItemSize;
       }
-      const offset = activeTop - prevActiveTop
+      const offset = activeTop - prevActiveTop;
 
       if (offset === 0) {
-        return
+        return;
       }
 
-      this.$el.scrollTop += offset
+      this.$el.scrollTop += offset;
     },
   },
 
-  beforeCreate () {
-    this.$_updates = []
-    this.$_undefinedSizes = 0
-    this.$_undefinedMap = {}
-    this.$_events = mitt()
+  beforeCreate() {
+    this.$_updates = [];
+    this.$_undefinedSizes = 0;
+    this.$_undefinedMap = {};
+    this.$_events = mitt();
   },
 
-  activated () {
-    this.vscrollData.active = true
+  activated() {
+    this.vscrollData.active = true;
   },
 
-  deactivated () {
-    this.vscrollData.active = false
+  deactivated() {
+    this.vscrollData.active = false;
   },
 
-  unmounted () {
-    this.$_events.all.clear()
+  unmounted() {
+    this.$_events.all.clear();
   },
 
   methods: {
-    onScrollerResize () {
-      const scroller = this.$refs.scroller
+    onScroll(e) {
+      this.$emit("scroll", e);
+    },
+    onScrollerResize() {
+      const scroller = this.$refs.scroller;
       if (scroller) {
-        this.forceUpdate()
+        this.forceUpdate();
       }
-      this.$emit('resize')
+      this.$emit("resize");
     },
 
-    onScrollerVisible () {
-      this.$_events.emit('vscroll:update', { force: false })
-      this.$emit('visible')
+    onScrollerVisible() {
+      this.$_events.emit("vscroll:update", { force: false });
+      this.$emit("visible");
     },
 
-    forceUpdate (clear = false) {
+    forceUpdate(clear = false) {
       if (clear || this.simpleArray) {
-        this.vscrollData.sizes = {}
+        this.vscrollData.sizes = {};
       }
-      this.$_events.emit('vscroll:update', { force: true })
+      this.$_events.emit("vscroll:update", { force: true });
     },
 
-    scrollToItem (index) {
-      const scroller = this.$refs.scroller
-      if (scroller) scroller.scrollToItem(index)
+    scrollToItem(index) {
+      const scroller = this.$refs.scroller;
+      if (scroller) scroller.scrollToItem(index);
     },
 
-    getItemSize (item, index = undefined) {
-      const id = this.simpleArray ? (index != null ? index : this.items.indexOf(item)) : item[this.keyField]
-      return this.vscrollData.sizes[id] || 0
+    getItemSize(item, index = undefined) {
+      const id = this.simpleArray
+        ? index != null
+          ? index
+          : this.items.indexOf(item)
+        : item[this.keyField];
+      return this.vscrollData.sizes[id] || 0;
     },
 
-    scrollToBottom () {
-      if (this.$_scrollingToBottom) return
-      this.$_scrollingToBottom = true
-      const el = this.$el
+    scrollToBottom() {
+      if (this.$_scrollingToBottom) return;
+      this.$_scrollingToBottom = true;
+      const el = this.$el;
       // Item is inserted to the DOM
       this.$nextTick(() => {
-        el.scrollTop = el.scrollHeight + 5000
+        el.scrollTop = el.scrollHeight + 5000;
         // Item sizes are computed
         const cb = () => {
-          el.scrollTop = el.scrollHeight + 5000
+          el.scrollTop = el.scrollHeight + 5000;
           requestAnimationFrame(() => {
-            el.scrollTop = el.scrollHeight + 5000
+            el.scrollTop = el.scrollHeight + 5000;
             if (this.$_undefinedSizes === 0) {
-              this.$_scrollingToBottom = false
+              this.$_scrollingToBottom = false;
             } else {
-              requestAnimationFrame(cb)
+              requestAnimationFrame(cb);
             }
-          })
-        }
-        requestAnimationFrame(cb)
-      })
+          });
+        };
+        requestAnimationFrame(cb);
+      });
     },
   },
-}
+};
 </script>
